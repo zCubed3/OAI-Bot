@@ -13,6 +13,7 @@ RUN apt-get update \
 RUN pip3 install \
         discord.py \
         openai \
+	gtts \
         jsons
 
 # Cleans up GCC and other build tools to make the final image smaller

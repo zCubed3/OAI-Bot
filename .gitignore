@@ -8,6 +8,8 @@
 token.txt
 openai_key.txt
 .vscode
+[Mm]emories/
+*.mp3
 
 # User-specific files
 *.rsuser
