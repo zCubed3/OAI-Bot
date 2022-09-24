@@ -18,6 +18,8 @@ class AISettings:
     model: str = "text-davinci-002"
     max_tokens: int = 256
     temp: float = 1.0
+    channel_id: int = -1
+    announcement: str = "Hello! @everyone"
 
 
 # Globals
@@ -158,6 +160,16 @@ async def on_ready():
 
     if testing_mode:
         action = "TESTING MODE!"
+
+    for guild in bot.guilds:
+        settings = brain.guild_settings[guild.id]
+
+        if settings.channel_id != -1:
+            ann = guild.get_channel(settings.channel_id)
+
+            if ann is not None:
+                response = brain.ask_openai(guild.id, True, settings.announcement).strip()
+                await ann.send(response)
 
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=action), status=discord.Status.online)
 
@@ -339,6 +351,7 @@ def get_lookup(ctx: commands.Context) -> int:
 
 
 @bot.command()
+@commands.has_permissions(administrator=True)
 async def set_model(ctx, mdl):
     lookup = get_lookup(ctx)
     settings = brain.get_settings(lookup, ctx.guild is not None)
@@ -379,7 +392,39 @@ async def set_after(ctx, aft):
 
 
 @bot.command()
-async def reload(ctx):
+@commands.has_permissions(administrator=True)
+async def set_ann(ctx, channel: int, msg: str):
+    lookup = get_lookup(ctx)
+
+    if ctx.guild is None:
+        await ctx.send("Announcements don't work in DMs!")
+        return
+
+    settings = brain.get_settings(lookup, ctx.guild is not None)
+    settings.channel_id = channel
+    settings.announcement = msg
+
+    brain.set_settings(lookup, ctx.guild is not None, settings)
+
+    await ctx.send(f"Set 'ann' to <#{channel}>, '{msg}'")
+
+
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def reset(ctx):
+    lookup = get_lookup(ctx)
+    brain.set_settings(lookup, ctx.guild is not None, AISettings())
+    await ctx.send(f"Reset settings...")
+
+    if ctx.guild is not None:
+        brain.guild_memory[ctx.guild.id] = {}
+    else:
+        brain.remember(None, ctx.message.author.id, "")
+
+
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def debug_reload(ctx):
     await ctx.send("Reloading bot module...")
     await bot.close()
 
@@ -441,6 +486,7 @@ async def forget(ctx: commands.Context):
 
 
 @bot.command()
+@commands.has_permissions(administrator=True)
 async def dump_brain(ctx: commands.Context):
     await ctx.message.reply(file=discord.File(brain_path))
 
