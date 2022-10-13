@@ -135,7 +135,7 @@ class Brain:
     def ask_openai(self, lookup: int, is_guild: bool, prompt: str) -> str:
         settings = self.get_settings(lookup, is_guild)
 
-        completion = self.ask_openai_raw(settings.model, settings.max_tokens, settings.temp)
+        completion = self.ask_openai_raw(prompt, settings.model, settings.max_tokens, settings.temp)
 
         responses = ""
         for choice in completion["choices"]:
