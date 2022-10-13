@@ -1,5 +1,6 @@
 #!/bin/python3
 
+from http.client import ResponseNotReady
 import discord
 from discord.ext import tasks, commands
 
@@ -122,16 +123,19 @@ class Brain:
         else:
             self.guild_settings[lookup] = settings
 
-    def ask_openai(self, lookup: int, is_guild: bool, prompt: str) -> str:
-        settings = self.get_settings(lookup, is_guild)
-
-        completion = openai.Completion.create(
-            engine=settings.model,
-            max_tokens=settings.max_tokens,
-            temperature=settings.temp,
+    def ask_openai_raw(self, prompt : str, model : str, max_tokens : int, temp : float):
+        return openai.Completion.create(
+            engine=model,
+            max_tokens=max_tokens,
+            temperature=temp,
 
             prompt=prompt,
         ).to_dict()
+
+    def ask_openai(self, lookup: int, is_guild: bool, prompt: str) -> str:
+        settings = self.get_settings(lookup, is_guild)
+
+        completion = self.ask_openai_raw(settings.model, settings.max_tokens, settings.temp)
 
         responses = ""
         for choice in completion["choices"]:
@@ -186,7 +190,23 @@ async def on_ready():
     embed.color = discord.Color.from_rgb(67, 160, 71)
 
     #await brain.send_ann("", embed)
-    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=action), status=discord.Status.online)
+
+    completion = brain.ask_openai_raw("Complete the phrase 'Watching'", "text-davinci-002", 128, 1.0)
+    responses = ""
+    for choice in completion["choices"]:
+        responses += choice.text
+
+    responses = responses.strip()
+    responses = responses.replace('"', '')
+    responses = responses.replace("'", '')
+    responses = responses.removeprefix("Watching")
+    responses = responses.removeprefix("Watcing")
+    responses = responses.removeprefix("watching")
+    responses = responses.removeprefix("watcing")
+
+    print(f"CLIENT: Status = {responses}")
+
+    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=responses), status=discord.Status.online)
 
 
 @bot.event
